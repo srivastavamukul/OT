@@ -1,65 +1,51 @@
 clc;
 clear;
 
-% Min Z = 2x1 + 3x2
-% x1 + x2 >= 4
-% x1 + 2x2 = 6
-% x1, x2 >= 0
+% Min Z = 8x11 + 6x12 + 10x13 + 9x21 + 7x22 + 4x23
+% Supply: S1 = 20, S2 = 30
+% Demand: D1 = 10, D2 = 25, D3 = 15
 
-M = 1000;
+% Cost matrix
+C = [8 6 10;
+     9 7 4];
 
-% Tableau: x1 x2 s1 a1 a2 | RHS
-% Bottom row stores reduced costs (c_j - z_j), initialized to +c_j.
-% Surplus s1 has cost 0; artificials a1, a2 have cost +M.
-T = [1 1 -1 1 0 4;
-     1 2  0 0 1 6;
-     2 3  0 M M 0];
+% Supply and Demand
+supply = [20 30];
+demand = [10 25 15];
 
-[m, n] = size(T);
+[m, n] = size(C);
+allocation = zeros(m,n);
 
-% Drive artificials out of the objective row.
-% a1 is basic in row 1, a2 is basic in row 2. Subtract M*row to zero them.
-T(end,:) = T(end,:) - M * T(1,:);
-T(end,:) = T(end,:) - M * T(2,:);
+while any(supply > 0) && any(demand > 0)
 
-max_iter = 50;
-iter = 0;
+    % Step 1: Find minimum cost
+    min_cost = inf;
 
-while true
-    iter = iter + 1;
-    if iter > max_iter
-        disp('Iteration limit reached'); break;
-    end
-
-    % For MIN: entering variable = most negative reduced cost
-    [min_val, pivot_col] = min(T(end, 1:end-1));
-    if min_val >= -1e-9
-        break;
-    end
-
-    % Leaving variable: minimum ratio test
-    ratios = inf(m-1, 1);
-    for i = 1:m-1
-        if T(i, pivot_col) > 1e-9
-            ratios(i) = T(i, end) / T(i, pivot_col);
-        end
-    end
-    [min_ratio, pivot_row] = min(ratios);
-    if isinf(min_ratio)
-        disp('Unbounded solution'); break;
-    end
-
-    % Pivot
-    T(pivot_row, :) = T(pivot_row, :) / T(pivot_row, pivot_col);
     for i = 1:m
-        if i ~= pivot_row
-            T(i, :) = T(i, :) - T(i, pivot_col) * T(pivot_row, :);
+        for j = 1:n
+            if supply(i) > 0 && demand(j) > 0
+                if C(i,j) < min_cost
+                    min_cost = C(i,j);
+                    row = i;
+                    col = j;
+                end
+            end
         end
     end
+
+    % Step 2: Allocate
+    x = min(supply(row), demand(col));
+    allocation(row, col) = x;
+
+    % Step 3: Update
+    supply(row) = supply(row) - x;
+    demand(col) = demand(col) - x;
 end
 
-disp('Final Tableau:');
-disp(T);
+disp('Allocation Matrix:');
+disp(allocation);
 
-disp('Optimal value of Z:');
-disp(-T(end, end));   % Z = -bottom-right in this convention
+total_cost = sum(sum(allocation .* C));
+
+disp('Total Transportation Cost:');
+disp(total_cost);
